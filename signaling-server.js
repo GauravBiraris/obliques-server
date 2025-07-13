@@ -6,15 +6,28 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
+// Add health check endpoint for Render
+app.get('/', (req, res) => {
+  res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK' });
+});
+
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: [
-      "http://localhost:3000",
-      "https://oblique-phi.vercel.app"
+      "http://localhost:3000", 
+      "https://your-vercel-app.vercel.app" // Replace with your actual Vercel URL
     ],
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 const rooms = new Map();
@@ -23,6 +36,8 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
   socket.on('join-room', ({ passkey, playerName, opponentName }) => {
+    console.log(`Player ${playerName} joining room ${passkey}`);
+    
     const roomId = passkey;
     
     if (!rooms.has(roomId)) {
