@@ -9,7 +9,10 @@ app.use(cors());
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://oblique-phi.vercel.app"
+    ],
     methods: ["GET", "POST"]
   }
 });
