@@ -20,7 +20,7 @@ const io = socketIo(server, {
   cors: {
     origin: [
       "http://localhost:3000", 
-      "https://oblique-phi.vercel.app/"
+      "https://oblique-phi.vercel.app"
     ],
     methods: ["GET", "POST"],
     credentials: true
