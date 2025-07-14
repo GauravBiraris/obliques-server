@@ -6,12 +6,15 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
+const rooms = new Map();
+
 // Add health check endpoint for Render
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Obliques Signaling Server',
     status: 'running',
-    rooms: rooms.size
+    rooms: rooms.size,
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -24,7 +27,8 @@ const io = socketIo(server, {
   cors: {
     origin: [
       "http://localhost:3000", 
-      "https://oblique-phi.vercel.app"
+      "https://oblique-phi.vercel.app",
+      "https://obliques-server.onrender.com"
     ],
     methods: ["GET", "POST"],
     credentials: true
@@ -33,8 +37,6 @@ const io = socketIo(server, {
   pingTimeout: 60000,
   pingInterval: 25000
 });
-
-const rooms = new Map();
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
@@ -70,12 +72,16 @@ io.on('connection', (socket) => {
     if (room.players.length === 1) {
       room.host = socket.id;
       socket.emit('room-joined', { isHost: true, roomId });
+      console.log(`Host ${playerName} joined room ${roomId}`);
     } else {
       socket.emit('room-joined', { isHost: false, roomId });
-      socket.to(roomId).emit('player-joined');
+      // Notify both players that the room is ready
+      io.to(roomId).emit('player-joined');
+      console.log(`Guest ${playerName} joined room ${roomId}, both players ready`);
     }
 
     socket.on('signal', (data) => {
+      console.log('Forwarding signal in room:', roomId);
       socket.to(roomId).emit('signal', data);
     });
 
@@ -83,15 +89,28 @@ io.on('connection', (socket) => {
       console.log('Client disconnected:', socket.id);
       if (room) {
         room.players = room.players.filter(p => p.id !== socket.id);
+        
+        // Notify remaining player
+        if (room.players.length === 1) {
+          socket.to(roomId).emit('player-disconnected');
+        }
+        
+        // Clean up empty rooms
         if (room.players.length === 0) {
           rooms.delete(roomId);
+          console.log(`Room ${roomId} deleted`);
         }
       }
     });
+  });
+
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
   });
 });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Signaling server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
