@@ -42,67 +42,46 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
   socket.on('join-room', ({ passkey, playerName, opponentName }) => {
-    console.log(`Player ${playerName} joining room ${passkey}`);
-    
-    const roomId = passkey;
-    
-    if (!rooms.has(roomId)) {
-      rooms.set(roomId, {
-        players: [],
-        host: null
-      });
-    }
+  console.log(`Player ${playerName} joining room ${passkey}`);
+  
+  const roomId = passkey;
+  
+  if (!rooms.has(roomId)) {
+    rooms.set(roomId, {
+      players: [],
+      host: null
+    });
+  }
 
-    const room = rooms.get(roomId);
-    
-    if (room.players.length >= 2) {
-      socket.emit('error', 'Room is full');
-      return;
-    }
+  const room = rooms.get(roomId);
+  
+  if (room.players.length >= 2) {
+    socket.emit('error', 'Room is full');
+    return;
+  }
 
-    const player = {
-      id: socket.id,
-      name: playerName,
-      opponentName: opponentName
-    };
+  const player = {
+    id: socket.id,
+    name: playerName,
+    opponentName: opponentName
+  };
 
-    room.players.push(player);
-    socket.join(roomId);
+  room.players.push(player);
+  socket.join(roomId);
 
-    if (room.players.length === 1) {
-      room.host = socket.id;
-      socket.emit('room-joined', { isHost: true, roomId });
-      console.log(`Host ${playerName} joined room ${roomId}`);
-    } else {
-      socket.emit('room-joined', { isHost: false, roomId });
-      // Notify both players that the room is ready
+  if (room.players.length === 1) {
+    room.host = socket.id;
+    socket.emit('room-joined', { isHost: true, roomId });
+    console.log(`Host ${playerName} joined room ${roomId}`);
+  } else {
+    socket.emit('room-joined', { isHost: false, roomId });
+    // Notify both players that the room is ready
+    console.log(`Guest ${playerName} joined room ${roomId}, both players ready`);
+    setTimeout(() => {
       io.to(roomId).emit('player-joined');
-      console.log(`Guest ${playerName} joined room ${roomId}, both players ready`);
-    }
-
-    socket.on('signal', (data) => {
-      console.log('Forwarding signal in room:', roomId);
-      socket.to(roomId).emit('signal', data);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id);
-      if (room) {
-        room.players = room.players.filter(p => p.id !== socket.id);
-        
-        // Notify remaining player
-        if (room.players.length === 1) {
-          socket.to(roomId).emit('player-disconnected');
-        }
-        
-        // Clean up empty rooms
-        if (room.players.length === 0) {
-          rooms.delete(roomId);
-          console.log(`Room ${roomId} deleted`);
-        }
-      }
-    });
-  });
+    }, 100);
+  }
+});
 
   socket.on('error', (error) => {
     console.error('Socket error:', error);
