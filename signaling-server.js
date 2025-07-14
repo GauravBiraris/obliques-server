@@ -8,11 +8,15 @@ app.use(cors());
 
 // Add health check endpoint for Render
 app.get('/', (req, res) => {
-  res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
+  res.json({ 
+    message: 'Obliques Signaling Server',
+    status: 'running',
+    rooms: rooms.size
+  });
 });
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK' });
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
 const server = http.createServer(app);
